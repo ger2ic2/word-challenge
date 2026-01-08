@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1‑Minute Topic Word Challenge</title>
+<style>
+body{margin:0;font-family:Segoe UI,Arial;background:radial-gradient(circle at top,#020617,#000);color:#e5e7eb}
+header{padding:16px;border-bottom:1px solid #1f2933;background:#020617}
+h1{margin:0;font-size:22px}
+.creator{font-size:13px;opacity:.8}
+.container{max-width:950px;margin:20px auto;padding:16px}
+.card{background:#020617;border:1px solid #1f2933;border-radius:18px;padding:18px;margin-bottom:18px;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+input,textarea,select,button{background:#020617;color:#e5e7eb;border:1px solid #1f2933;border-radius:14px;padding:12px}
+textarea{width:100%;height:140px;font-size:15px}
+button{cursor:pointer;font-weight:700;background:linear-gradient(135deg,#2563eb,#22c55e);border:none}
+.secondary{background:#374151}
+.stats{display:flex;gap:16px;font-weight:800}
+.timer{font-size:28px}
+.pill{padding:6px 12px;border-radius:999px;background:#111827;font-size:13px}
+.leaderboard li{padding:6px 0;border-bottom:1px dashed #1f2933}
+.level{font-weight:700}
+.note{font-size:13px;opacity:.85}
+</style>
+</head>
+<body>
+<header>
+<h1>1‑Minute Topic Word Challenge</h1>
+<div class="creator">Created by: <strong>Your Name</strong></div>
+</header>
+
+<div class="container">
+<div class="card">
+<div class="row">
+<div class="row">
+<input id="username" placeholder="Username">
+<span class="pill" id="topic">Topic</span>
+<span class="pill level" id="level">Easy</span>
+</div>
+<div class="stats">
+<div class="timer">⏱ <span id="time">60</span>s</div>
+<div>Score: <span id="score">0</span></div>
+</div>
+</div>
+<textarea id="input" placeholder="Type words (space / comma separated)" disabled></textarea>
+<div class="row" style="margin-top:12px">
+<button id="start">Start</button>
+<button id="reset" class="secondary">Reset</button>
+</div>
+<div class="note">Rules: valid words only • unique words • faster typing = combo bonus</div>
+</div>
+
+<div class="card">
+<h3>🏆 Leaderboard (Top 10)</h3>
+<ol id="board" class="leaderboard"></ol>
+<div class="note">Shared via link when hosted (GitHub Pages / Netlify).</div>
+</div>
+</div>
+
+<script>
+// ===== GAME DATA =====
+const DATA={
+Easy:{
+Animals:['dog','cat','cow','lion','tiger','horse','goat','sheep','fish','bird'],
+Fruits:['apple','banana','orange','mango','grape','papaya','pear'],
+Sports:['cricket','football','tennis','hockey','badminton'],
+School:['pen','pencil','book','teacher','class','desk'],
+Food:['rice','bread','pizza','burger','milk','egg'],
+Vehicles:['car','bus','bike','train','truck']
+},
+Medium:{
+Animals:['elephant','giraffe','kangaroo','leopard','dolphin'],
+Fruits:['pineapple','strawberry','blueberry','watermelon'],
+Sports:['basketball','volleyball','swimming','athletics'],
+School:['laboratory','principal','assignment','notebook'],
+Food:['sandwich','noodles','cheeseburger','omelette'],
+Vehicles:['airplane','helicopter','motorcycle','submarine']
+}
+};
+
+let level='Easy';
+let topics=Object.keys(DATA[level]);
+let currentTopic='';
+let timer=null,timeLeft=60;
+let lastType=Date.now(),combo=1;
+
+const input=document.getElementById('input');
+const timeEl=document.getElementById('time');
+const scoreEl=document.getElementById('score');
+const topicEl=document.getElementById('topic');
+const levelEl=document.getElementById('level');
+const board=document.getElementById('board');
+
+function nextRound(){
+combo=1;
+const t=topics[Math.floor(Math.random()*topics.length)];
+currentTopic=t;
+topicEl.textContent=t;
+levelEl.textContent=level;
+}
+
+function calcScore(){
+const allowed=DATA[level][currentTopic];
+const words=input.value.toLowerCase().split(/[\s,]+/).filter(Boolean);
+const unique=[...new Set(words)].filter(w=>allowed.includes(w));
+return unique.length*combo;
+}
+
+function updateScore(){
+const now=Date.now();
+if(now-lastType<1200) combo=Math.min(combo+1,5); else combo=1;
+lastType=now;
+scoreEl.textContent=calcScore();
+}
+
+function saveScore(user,score){
+let data=JSON.parse(localStorage.getItem('globalBoard')||'[]');
+data.push({user,score,topic:currentTopic,level});
+data.sort((a,b)=>b.score-a.score);
+localStorage.setItem('globalBoard',JSON.stringify(data.slice(0,10)));
+renderBoard();
+}
+
+function renderBoard(){
+board.innerHTML='';
+const data=JSON.parse(localStorage.getItem('globalBoard')||'[]');
+if(!data.length){board.innerHTML='<li>No scores yet</li>';return;}
+data.forEach(d=>{
+const li=document.createElement('li');
+li.textContent=`${d.user} — ${d.score} (${d.level} • ${d.topic})`;
+board.appendChild(li);
+});
+}
+
+// ===== CONTROLS =====
+document.getElementById('start').onclick=()=>{
+if(timer) return;
+input.value='';scoreEl.textContent='0';
+timeLeft=60;timeEl.textContent=60;
+input.disabled=false;input.focus();
+nextRound();
+timer=setInterval(()=>{
+timeLeft--;timeEl.textContent=timeLeft;
+if(timeLeft<=0){clearInterval(timer);timer=null;input.disabled=true;
+const user=document.getElementById('username').value||'Anonymous';
+saveScore(user,calcScore());}
+},1000);
+};
+
+document.getElementById('reset').onclick=()=>{
+if(timer){clearInterval(timer);timer=null;}
+input.value='';input.disabled=true;scoreEl.textContent='0';
+timeLeft=60;timeEl.textContent='60';
+};
+
+input.addEventListener('input',updateScore);
+renderBoard();
+</script>
+</body>
+</html>
